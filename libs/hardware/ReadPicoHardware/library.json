@@ -1,0 +1,12 @@
+{
+  "name": "ReadPicoHardware",
+  "version": "0.1.0",
+  "description": "Read Pico E0470 LCD bus, CST836U touch and CW32 PMU backend",
+  "platforms": ["espressif32"],
+  "frameworks": ["arduino"],
+  "build": {
+    "srcDir": ".",
+    "srcFilter": ["+<src/>", "+<vendor/epdiy/src/>", "-<vendor/epdiy/src/font.c>", "+<vendor/cst836u/*.c>", "+<vendor/fca9555/*.c>", "+<vendor/sy7636a/*.c>", "+<vendor/read_pico_pmu/*.c>", "+<vendor/e0470_epaper_waveform/*.c>", "+<vendor/read_pico/*.c>"],
+    "extraScript": "build.py"
+  }
+}

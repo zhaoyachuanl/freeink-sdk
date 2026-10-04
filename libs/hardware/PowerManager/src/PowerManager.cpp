@@ -6,6 +6,9 @@
 #include <esp_sleep.h>
 #include <esp_system.h>
 #include <soc/soc_caps.h>
+#if FREEINK_DEVICE_READPICO
+#include <ReadPicoHardware.h>
+#endif
 #if FREEINK_DEVICE_WS397
 #include <Axp2101.h>
 #endif
@@ -145,6 +148,9 @@ void PowerManager::deepSleep() {
 }
 
 void PowerManager::deepSleepUntilPowerButton() {
+#if FREEINK_DEVICE_READPICO
+  if (BoardConfig::isReadPico()) readpico::softSleep();
+#endif
   waitForPowerButtonRelease();
   armPowerButtonWakeup();
   deepSleep();

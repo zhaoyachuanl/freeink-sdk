@@ -33,6 +33,10 @@
 #ifndef FREEINK_DEVICE_X4
 #define FREEINK_DEVICE_X4 0
 #endif
+#ifndef FREEINK_DEVICE_READPICO
+#define FREEINK_DEVICE_READPICO 0
+#endif
+#define FREEINK_DRIVER_READPICO FREEINK_DEVICE_READPICO
 #ifndef FREEINK_DEVICE_X3
 #define FREEINK_DEVICE_X3 0
 #endif
@@ -87,10 +91,11 @@
 #endif
 
 // --- 2) Coherence: exactly one MCU family, at least one device ---------------
-#if !(FREEINK_DEVICE_X4 || FREEINK_DEVICE_X3 || FREEINK_DEVICE_X4PRO || FREEINK_DEVICE_X4CLASSIC || FREEINK_DEVICE_M5 || \
-      FREEINK_DEVICE_MURPHY || FREEINK_DEVICE_DELINK || FREEINK_DEVICE_LILYGO || FREEINK_DEVICE_M5PAPER ||               \
-      FREEINK_DEVICE_STICKY || FREEINK_DEVICE_PAPERMONO || FREEINK_DEVICE_PAPERS3 || FREEINK_DEVICE_MURPHY_M4 ||         \
-      FREEINK_DEVICE_EEGO_A4 || FREEINK_DEVICE_ONEPAGE || FREEINK_DEVICE_WS397 || FREEINK_DEVICE_METALIO_EINK4)
+#if !(FREEINK_DEVICE_X4 || FREEINK_DEVICE_X3 || FREEINK_DEVICE_X4PRO || FREEINK_DEVICE_X4CLASSIC ||            \
+      FREEINK_DEVICE_M5 || FREEINK_DEVICE_MURPHY || FREEINK_DEVICE_DELINK || FREEINK_DEVICE_LILYGO ||          \
+      FREEINK_DEVICE_M5PAPER || FREEINK_DEVICE_STICKY || FREEINK_DEVICE_PAPERMONO || FREEINK_DEVICE_PAPERS3 || \
+      FREEINK_DEVICE_MURPHY_M4 || FREEINK_DEVICE_EEGO_A4 || FREEINK_DEVICE_ONEPAGE || FREEINK_DEVICE_WS397 ||  \
+      FREEINK_DEVICE_METALIO_EINK4 || FREEINK_DEVICE_READPICO)
 #error \
     "FreeInk: no device selected. Pass at least one -DFREEINK_DEVICE_<NAME> (X4, X3, X4PRO, X4CLASSIC, M5, MURPHY, DELINK, LILYGO, M5PAPER, STICKY, PAPERMONO, PAPERS3, MURPHY_M4, EEGO_A4, ONEPAGE, WS397, METALIO_EINK4) in your build env — see platformio.sample.ini."
 #endif
@@ -100,10 +105,11 @@
 // deep-sleep wakeup, SPI peripheral count, and toolchain, so they never share a binary.
 #define FREEINK_MCU_C3 (FREEINK_DEVICE_X3 || FREEINK_DEVICE_X4)
 #define FREEINK_MCU_C61 (FREEINK_DEVICE_ONEPAGE)
-#define FREEINK_MCU_S3                                                                                    \
-  (FREEINK_DEVICE_M5 || FREEINK_DEVICE_MURPHY || FREEINK_DEVICE_DELINK || FREEINK_DEVICE_LILYGO ||        \
-   FREEINK_DEVICE_STICKY || FREEINK_DEVICE_X4PRO || FREEINK_DEVICE_X4CLASSIC || FREEINK_DEVICE_PAPERMONO ||  \
-   FREEINK_DEVICE_PAPERS3 || FREEINK_DEVICE_MURPHY_M4 || FREEINK_DEVICE_EEGO_A4 || FREEINK_DEVICE_WS397 || FREEINK_DEVICE_METALIO_EINK4)
+#define FREEINK_MCU_S3                                                                                      \
+  (FREEINK_DEVICE_M5 || FREEINK_DEVICE_MURPHY || FREEINK_DEVICE_DELINK || FREEINK_DEVICE_LILYGO ||          \
+   FREEINK_DEVICE_STICKY || FREEINK_DEVICE_X4PRO || FREEINK_DEVICE_X4CLASSIC || FREEINK_DEVICE_PAPERMONO || \
+   FREEINK_DEVICE_PAPERS3 || FREEINK_DEVICE_MURPHY_M4 || FREEINK_DEVICE_EEGO_A4 || FREEINK_DEVICE_WS397 ||  \
+   FREEINK_DEVICE_METALIO_EINK4 || FREEINK_DEVICE_READPICO)
 #define FREEINK_MCU_ESP32 (FREEINK_DEVICE_M5PAPER)
 #if (FREEINK_MCU_C3 + FREEINK_MCU_C61 + FREEINK_MCU_S3 + FREEINK_MCU_ESP32) != 1
 #error \
@@ -117,8 +123,9 @@
 // X4 Pro is a distinct ESP32-S3 device (NOT the C3 X4): its 800x480 panel may
 // use SSD1677, UC8179, or UC8279, recovered from OEM firmware and hardware
 // references — see docs/xteink-x4pro-support.md.
-#if FREEINK_DEVICE_X4 || FREEINK_DEVICE_DELINK || FREEINK_DEVICE_STICKY || FREEINK_DEVICE_X4PRO || \
-    FREEINK_DEVICE_X4CLASSIC || FREEINK_DEVICE_MURPHY_M4 || FREEINK_DEVICE_ONEPAGE || FREEINK_DEVICE_WS397 || FREEINK_DEVICE_METALIO_EINK4
+#if FREEINK_DEVICE_X4 || FREEINK_DEVICE_DELINK || FREEINK_DEVICE_STICKY || FREEINK_DEVICE_X4PRO ||            \
+    FREEINK_DEVICE_X4CLASSIC || FREEINK_DEVICE_MURPHY_M4 || FREEINK_DEVICE_ONEPAGE || FREEINK_DEVICE_WS397 || \
+    FREEINK_DEVICE_METALIO_EINK4
 #define FREEINK_DRIVER_SSD1677 1
 #else
 #define FREEINK_DRIVER_SSD1677 0
@@ -200,10 +207,10 @@
 
 // --- 4) Derive default capabilities (override with -DFREEINK_CAP_*=0/1) -------
 #ifndef FREEINK_CAP_TOUCH
-#define FREEINK_CAP_TOUCH                                                                               \
-  (FREEINK_DEVICE_MURPHY || FREEINK_DEVICE_LILYGO || FREEINK_DEVICE_M5PAPER || FREEINK_DEVICE_STICKY || \
+#define FREEINK_CAP_TOUCH                                                                                    \
+  (FREEINK_DEVICE_MURPHY || FREEINK_DEVICE_LILYGO || FREEINK_DEVICE_M5PAPER || FREEINK_DEVICE_STICKY ||      \
    FREEINK_DEVICE_X4PRO || FREEINK_DEVICE_PAPERMONO || FREEINK_DEVICE_PAPERS3 || FREEINK_DEVICE_MURPHY_M4 || \
-   FREEINK_DEVICE_EEGO_A4 || FREEINK_DEVICE_METALIO_EINK4)
+   FREEINK_DEVICE_EEGO_A4 || FREEINK_DEVICE_METALIO_EINK4 || FREEINK_DEVICE_READPICO)
 #endif
 #ifndef FREEINK_CAP_FRONTLIGHT
 // EEGO A4's frontlight is an I2C LED driver (viaI2cLed), not LEDC PWM — the
@@ -281,7 +288,7 @@
 // ACTIVE.batteryGauge.gaugeAddr != 0) — required because X3 (gauge) and X4 (ADC)
 // share one C3 binary.
 #ifndef FREEINK_BATTERY_I2C_GAUGE
-#define FREEINK_BATTERY_I2C_GAUGE                                                            \
+#define FREEINK_BATTERY_I2C_GAUGE                                                                 \
   (FREEINK_DEVICE_X3 || FREEINK_DEVICE_LILYGO || FREEINK_DEVICE_STICKY || FREEINK_DEVICE_X4PRO || \
    FREEINK_DEVICE_X4CLASSIC || FREEINK_DEVICE_WS397 || FREEINK_DEVICE_METALIO_EINK4)
 #endif
@@ -300,8 +307,8 @@
 // On-board I2C sensors. Each lib (Rtc / EnvironmentSensor / Imu) compiles its
 // I2C driver only when its flag is set; otherwise it links stub bodies.
 #ifndef FREEINK_CAP_RTC
-#define FREEINK_CAP_RTC                                                                             \
-  (FREEINK_DEVICE_X3 || FREEINK_DEVICE_STICKY || FREEINK_DEVICE_X4PRO || FREEINK_DEVICE_X4CLASSIC || \
+#define FREEINK_CAP_RTC                                                                                     \
+  (FREEINK_DEVICE_X3 || FREEINK_DEVICE_STICKY || FREEINK_DEVICE_X4PRO || FREEINK_DEVICE_X4CLASSIC ||        \
    FREEINK_DEVICE_PAPERMONO || FREEINK_DEVICE_PAPERS3 || FREEINK_DEVICE_LILYGO || FREEINK_DEVICE_EEGO_A4 || \
    FREEINK_DEVICE_WS397 || FREEINK_DEVICE_METALIO_EINK4)
 #endif
@@ -309,8 +316,9 @@
 #define FREEINK_CAP_TEMP_HUMIDITY (FREEINK_DEVICE_STICKY)
 #endif
 #ifndef FREEINK_CAP_IMU
-#define FREEINK_CAP_IMU \
-  (FREEINK_DEVICE_X3 || FREEINK_DEVICE_STICKY || FREEINK_DEVICE_X4CLASSIC || FREEINK_DEVICE_WS397 || FREEINK_DEVICE_METALIO_EINK4)
+#define FREEINK_CAP_IMU                                                                              \
+  (FREEINK_DEVICE_X3 || FREEINK_DEVICE_STICKY || FREEINK_DEVICE_X4CLASSIC || FREEINK_DEVICE_WS397 || \
+   FREEINK_DEVICE_METALIO_EINK4)
 #endif
 // Consumer-triggered vibration output; independent of audio and input events.
 #ifndef FREEINK_CAP_HAPTIC
@@ -342,7 +350,7 @@
 // (The prebuilt Arduino-ESP32 libs disable BSS-in-PSRAM, so this is a runtime
 // heap allocation, not EXT_RAM_BSS_ATTR.)
 #ifndef FREEINK_FB_PSRAM
-#define FREEINK_FB_PSRAM (FREEINK_DEVICE_M5PAPER || FREEINK_DEVICE_PAPERMONO)
+#define FREEINK_FB_PSRAM (FREEINK_DEVICE_M5PAPER || FREEINK_DEVICE_PAPERMONO || FREEINK_DEVICE_READPICO)
 #endif
 
 // SD transport. de-link (4-bit) and X4 Pro (1-bit) are wired for SDMMC; SdFat
@@ -351,9 +359,9 @@
 // must define USE_BLOCK_DEVICE_INTERFACE=1 for the SdFat FsVolume these mount on.
 // Override with -DFREEINK_SD_SDMMC=0/1.
 #ifndef FREEINK_SD_SDMMC
-#define FREEINK_SD_SDMMC                                                                            \
+#define FREEINK_SD_SDMMC                                                                                    \
   (FREEINK_DEVICE_DELINK || FREEINK_DEVICE_X4PRO || FREEINK_DEVICE_X4CLASSIC || FREEINK_DEVICE_PAPERMONO || \
-   FREEINK_DEVICE_MURPHY_M4 || FREEINK_DEVICE_WS397 || FREEINK_DEVICE_METALIO_EINK4)
+   FREEINK_DEVICE_MURPHY_M4 || FREEINK_DEVICE_WS397 || FREEINK_DEVICE_METALIO_EINK4 || FREEINK_DEVICE_READPICO)
 #endif
 
 // Serial log transport hint for consumer firmware. Boards can share the same MCU
@@ -395,8 +403,8 @@ inline auto& serialTransport() { return Serial; }
 enum class Board : uint8_t {
   XteinkX4,
   XteinkX3,
-  XteinkX3Uc8279,  // newer X3 production run: same board/glass, UC8279d controller
-  XteinkX4Pro,     // ESP32-S3 sibling of the C3 X4: SSD1677 + GT911 touch + warm/cold frontlight
+  XteinkX3Uc8279,   // newer X3 production run: same board/glass, UC8279d controller
+  XteinkX4Pro,      // ESP32-S3 sibling of the C3 X4: SSD1677 + GT911 touch + warm/cold frontlight
   XteinkX4Classic,  // ESP32-S3 "X4 Classic" (X4C): same panel/glass as the X4 Pro but NO touch and
                     // NO frontlight — those pins become four extra discrete front keys
   M5StackPaperColor,
@@ -407,11 +415,12 @@ enum class Board : uint8_t {
   M5PaperV11,
   Sticky,
   PaperMono,
-  M5PaperS3,  // ESP32-S3 sibling of M5Paper v1.1: same ED047TC1 glass, no IT8951 — raw parallel via LovyanGFX
-  EegoA4,     // EEGO Reader A4: ESP32-S3, UC8279C 768x552 SPI panel, GSLX680 touch, PCF8563 RTC
-  OnePage,    // OnePage: ESP32-C61, SSD1677 800x480 SPI panel, 4-key ADC ladder + 3 side keys
-  WsEpaper397,  // Waveshare ESP32-S3-ePaper-3.97: SSD1677 800x480, 3 keys + BOOT, AXP2101 PMIC
+  M5PaperS3,     // ESP32-S3 sibling of M5Paper v1.1: same ED047TC1 glass, no IT8951 — raw parallel via LovyanGFX
+  EegoA4,        // EEGO Reader A4: ESP32-S3, UC8279C 768x552 SPI panel, GSLX680 touch, PCF8563 RTC
+  OnePage,       // OnePage: ESP32-C61, SSD1677 800x480 SPI panel, 4-key ADC ladder + 3 side keys
+  WsEpaper397,   // Waveshare ESP32-S3-ePaper-3.97: SSD1677 800x480, 3 keys + BOOT, AXP2101 PMIC
   MetalioEInk4,  // ESP32-S3, GDEM0397T81, CST816S, TCA9555
+  ReadPico,      // ESP32-S3, 1216x684 E0470 raw 16-bit LCD bus, CW32 PMU
 };
 
 // How the board reports button presses.
@@ -445,11 +454,12 @@ enum class DisplayController : uint8_t {
   IT8951 = 5,
   UC8279 = 6,
   UC8179 = 7,
-  UC8279C = 8  // EEGO A4 768x552 sibling of the UC8279 family (Uc8279cA4Driver)
+  UC8279C = 8,  // EEGO A4 768x552 sibling of the UC8279 family (Uc8279cA4Driver)
+  ReadPico = 9
 };
 
 // Optional capacitive touch controller.
-enum class TouchController : uint8_t { None, Chsc6x, Gt911, Ft5x06, Ft6336u, Gslx680, Cst816s };
+enum class TouchController : uint8_t { None, Chsc6x, Gt911, Ft5x06, Ft6336u, Gslx680, Cst816s, Cst836u };
 
 // Optional audio output path. Murphy M3 ships an ES8388-compatible stereo
 // codec (I2S slave, control over the shared touch I2C bus) — the contract was
@@ -507,7 +517,7 @@ struct SdmmcPins {
 // profile loaded before it reports a valid SoC (Xteink X4 Pro).
 // Axp2101: not a gauge chip but a PMIC whose fuel-gauge block reports SoC directly
 // (Waveshare ESP32-S3-ePaper-3.97). Its registers live in Axp2101.h.
-enum class GaugeType : uint8_t { Bq27220, Cw2017, Axp2101 };
+enum class GaugeType : uint8_t { Bq27220, Cw2017, Axp2101, ReadPico };
 
 // I2C fuel-gauge / charger wiring (e.g. BQ27220 + BQ25896 on LilyGo T5 S3). When
 // gaugeAddr != 0 (and FREEINK_BATTERY_I2C_GAUGE is set), BatteryMonitor reads the
@@ -621,8 +631,8 @@ struct I2cFrontlightConfig {
   uint8_t address;
   int8_t enable;
 };
-constexpr I2cFrontlightConfig NO_I2C_FRONTLIGHT = {I2cFrontlightController::None, PIN_UNASSIGNED, PIN_UNASSIGNED, 0,
-                                                   0, PIN_UNASSIGNED};
+constexpr I2cFrontlightConfig NO_I2C_FRONTLIGHT = {
+    I2cFrontlightController::None, PIN_UNASSIGNED, PIN_UNASSIGNED, 0, 0, PIN_UNASSIGNED};
 
 // Audio output description (AudioOutput::None disables it).
 struct AudioConfig {
@@ -815,7 +825,7 @@ constexpr TouchConfig NO_TOUCH = {TouchController::None,
 // flag (wasHomeGesture()/wasHomeKeyHold()) that discarded every press. On a board
 // with one physical nav key that is a real loss.
 constexpr TouchConfig LILYGO_T5_PRO_GT911 = {
-    TouchController::Gt911, 39,   40,    3,    9, 0x5D, 0, 959, 0, 539, false, 0x14, false, true,
+    TouchController::Gt911, 39,   40,    3,    9,   0x5D, 0, 959, 0, 539, false, 0x14, false, true,
     PIN_UNASSIGNED,         true, false, true, true};  // powerEnable, swapXY, flipX, flipY, hasHomeKey
 constexpr FrontlightConfig NO_FRONTLIGHT = {PIN_UNASSIGNED, 0, 0, true};
 constexpr AudioConfig NO_AUDIO = {AudioOutput::None,
@@ -862,14 +872,32 @@ constexpr AudioConfig M5_PAPERCOLOR_AUDIO = {
 // Sticky has no output codec (PDM mic in only) — just the LEDC buzzer on GPIO48,
 // driven by the Buzzer lib. output=None so hasAudio() stays false; the buzzer
 // field carries the tone pin (mirrors how MURPHY_AUDIO carries its buzzer).
-constexpr AudioConfig STICKY_AUDIO = {AudioOutput::None,    PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED,
-                                      PIN_UNASSIGNED,       PIN_UNASSIGNED, true,           PIN_UNASSIGNED,
-                                      PIN_UNASSIGNED,       PIN_UNASSIGNED, 0,              48};
+constexpr AudioConfig STICKY_AUDIO = {AudioOutput::None,
+                                      PIN_UNASSIGNED,
+                                      PIN_UNASSIGNED,
+                                      PIN_UNASSIGNED,
+                                      PIN_UNASSIGNED,
+                                      PIN_UNASSIGNED,
+                                      true,
+                                      PIN_UNASSIGNED,
+                                      PIN_UNASSIGNED,
+                                      PIN_UNASSIGNED,
+                                      0,
+                                      48};
 // M5Stack PaperS3 has no output codec — just the LEDC buzzer on GPIO21 (per the
 // official pin map and M5Unified's buzzer speaker config). Same shape as Sticky.
-constexpr AudioConfig M5_PAPERS3_AUDIO = {AudioOutput::None,    PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED,
-                                          PIN_UNASSIGNED,       PIN_UNASSIGNED, true,           PIN_UNASSIGNED,
-                                          PIN_UNASSIGNED,       PIN_UNASSIGNED, 0,              21};
+constexpr AudioConfig M5_PAPERS3_AUDIO = {AudioOutput::None,
+                                          PIN_UNASSIGNED,
+                                          PIN_UNASSIGNED,
+                                          PIN_UNASSIGNED,
+                                          PIN_UNASSIGNED,
+                                          PIN_UNASSIGNED,
+                                          true,
+                                          PIN_UNASSIGNED,
+                                          PIN_UNASSIGNED,
+                                          PIN_UNASSIGNED,
+                                          0,
+                                          21};
 constexpr DisplayOrientation NO_FLIP = {false, false};   // native scan
 constexpr DisplayOrientation ROTATE_180 = {true, true};  // upside-down mount
 constexpr DisplayOrientation MIRROR_X = {true, false};   // horizontal mirror
@@ -877,6 +905,8 @@ constexpr DisplayOrientation MIRROR_Y = {false, true};   // vertical mirror
 constexpr SdmmcPins NO_SDMMC = {
     PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, 0};
 constexpr BatteryGaugeConfig NO_GAUGE = {PIN_UNASSIGNED, PIN_UNASSIGNED, 0, 0, 0};  // ADC battery
+
+#include "ReadPicoProfile.h"
 
 // Shared display SPI default for every Xteink board and controller variant.
 constexpr uint32_t XTEINK_DISPLAY_SPI_HZ = 10000000u;
@@ -954,7 +984,8 @@ constexpr BoardProfile XTEINK_X3 = {
     NO_LEDS,
     NO_FLIP,
     NO_SDMMC,
-    {20, 0, 400000, 0x55, 0, 0, GaugeType::Bq27220, 650},  // BQ27220 fuel gauge (0x55) on SDA20/SCL0, 650 mAh cell; no charger IC
+    {20, 0, 400000, 0x55, 0, 0, GaugeType::Bq27220,
+     650},  // BQ27220 fuel gauge (0x55) on SDA20/SCL0, 650 mAh cell; no charger IC
     NO_MIC,
     {20, 0, 400000, 0x68, 0, 0x6B, 0, RtcType::Ds3231, ImuType::Qmi8658}};
 
@@ -973,7 +1004,7 @@ constexpr BoardProfile XTEINK_X3_UC8279 = {
     792,
     528,
     {8, 10, 21, 4, 5, 6, PIN_UNASSIGNED},
-    XTEINK_DISPLAY_SPI_HZ,  // displaySpiHz: 10 MHz
+    XTEINK_DISPLAY_SPI_HZ,                                  // displaySpiHz: 10 MHz
     {PIN_UNASSIGNED, 7, PIN_UNASSIGNED, 12, 13, false, 0},  // SD powerEnable=GPIO13 (active-high) — see XTEINK_X3
     {0, 1, 2, 3, 4, 5, 3, false},
     0,
@@ -1369,12 +1400,12 @@ constexpr BoardProfile M5PAPER_S3 = {
      PIN_UNASSIGNED},                            // no SPI display pins: parallel bus lives in LgfxEpdConfig
     0,                                           // displaySpiHz n/a (external bus)
     {39, 40, 38, 47, PIN_UNASSIGNED, false, 0},  // SD over SPI: SCLK39 MISO40 MOSI38 CS47, no power gate
-    {PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED,
-     PIN_UNASSIGNED, false},  // no GPIO buttons — touch-only navigation
-    3,     // batteryAdc GPIO3 (ADC1_CH2)
-    4,     // batteryChargeStatus GPIO4, LOW = charging (LGS4056H STAT)
-    2.0f,  // divider 2:1 (M5Unified's _adc_ratio; pending hardware validation)
-    5,     // usbDetect GPIO5, HIGH = USB present
+    {PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED,
+     false},  // no GPIO buttons — touch-only navigation
+    3,        // batteryAdc GPIO3 (ADC1_CH2)
+    4,        // batteryChargeStatus GPIO4, LOW = charging (LGS4056H STAT)
+    2.0f,     // divider 2:1 (M5Unified's _adc_ratio; pending hardware validation)
+    5,        // usbDetect GPIO5, HIGH = USB present
     // GT911 on the internal I2C bus SDA41/SCL42 (shared with the BM8563 RTC +
     // BMI270 IMU), INT=GPIO48, no reset wired (self-loads its config), 0x5D alt
     // 0x14. Portrait digitizer (540x960) on the landscape panel -> swapXY, rawMax
@@ -1384,9 +1415,9 @@ constexpr BoardProfile M5PAPER_S3 = {
     {TouchController::Gt911, 41, 42, 48, PIN_UNASSIGNED, 0x5D, 0, 959, 0, 539, false, 0x14, false,
      true,  // gt911CoordsAtByte0: no reset/config dance, like M5Paper v1.1 (pending validation)
      PIN_UNASSIGNED, true, false, true},  // powerEnable none, swapXY=true, flipX=false, flipY=true
-    NO_FRONTLIGHT,     // e-paper, no frontlight (the GPIO0 status LED is board-support)
-    M5_PAPERS3_AUDIO,  // no output codec; LEDC buzzer on GPIO21 (Buzzer lib)
-    NO_LEDS,           // single PWM LED on GPIO0 is not an addressable strip — board-support
+    NO_FRONTLIGHT,                        // e-paper, no frontlight (the GPIO0 status LED is board-support)
+    M5_PAPERS3_AUDIO,                     // no output codec; LEDC buzzer on GPIO21 (Buzzer lib)
+    NO_LEDS,                              // single PWM LED on GPIO0 is not an addressable strip — board-support
     NO_FLIP,
     NO_SDMMC,  // SD is SPI, not SDMMC
     NO_GAUGE,  // ADC battery (GPIO3 above), no I2C fuel gauge
@@ -1409,7 +1440,7 @@ constexpr BoardProfile EEGO_A4 = {
     DisplayController::UC8279C,
     768,
     552,
-    {42, 45, 21, 14, 13, 41, 6},                       // SCLK MOSI CS DC RST BUSY PWR-EN
+    {42, 45, 21, 14, 13, 41, 6},  // SCLK MOSI CS DC RST BUSY PWR-EN
     20000000,
     {39, 40, 38, 47, PIN_UNASSIGNED, true, 20000000},  // dedicated HSPI SD: SCLK MISO MOSI CS
     // UP DOWN POWER. Power is active-HIGH (press drives 3V3) with a weak
@@ -1423,8 +1454,9 @@ constexpr BoardProfile EEGO_A4 = {
     PIN_UNASSIGNED,
     // GSLX680: pollGslx680 applies the 1.2.7 calibration and returns panel-native
     // x=0..767, y=0..551, so no raw-range/swap/flip mapping is needed here.
-    {TouchController::Gslx680, 2, 1, PIN_UNASSIGNED, 3, 0x40, 0, 767, 0, 551, false, 0, false, false,
-     PIN_UNASSIGNED, false, false, false, true, true},  // powerEnable, swapXY, flipX, flipY, hasHomeKey, pwrEnActiveHigh
+    {TouchController::Gslx680, 2,     1,     PIN_UNASSIGNED, 3,    0x40, 0, 767, 0, 551, false, 0, false, false,
+     PIN_UNASSIGNED,           false, false, false,          true, true},  // powerEnable, swapXY, flipX, flipY,
+                                                                           // hasHomeKey, pwrEnActiveHigh
     // The frontlight is an LM3630A driven via the i2cFrontlight field below, not
     // this LEDC/PWM FrontlightConfig — the frontlit variant's light is I2C only.
     NO_FRONTLIGHT,
@@ -1596,26 +1628,41 @@ constexpr BoardProfile WS_EPAPER_397 = {
 // Metalio E-Ink 4: pin mapping follows metalio-hw-test v2.0.51 config.h.
 // The supplied GPIO workbook reverses DC/RST; see docs/metalio-eink4-support.md.
 constexpr BoardProfile METALIO_EINK4 = {
-    Board::MetalioEInk4, "metalio_eink4", InputStyle::DigitalButtons,
-    DisplayController::SSD1677, 800, 480,
-    {14, 8, 45, 13, 18, 9, PIN_UNASSIGNED}, 10000000,
+    Board::MetalioEInk4,
+    "metalio_eink4",
+    InputStyle::DigitalButtons,
+    DisplayController::SSD1677,
+    800,
+    480,
+    {14, 8, 45, 13, 18, 9, PIN_UNASSIGNED},
+    10000000,
     {PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, false, 0},
     // BOOT = confirm; volume +/- on TCA9555 become up/down in InputManager.
     {PIN_UNASSIGNED, 0, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, 3, false},
-    PIN_UNASSIGNED, PIN_UNASSIGNED, 2.0f, PIN_UNASSIGNED,
+    PIN_UNASSIGNED,
+    PIN_UNASSIGNED,
+    2.0f,
+    PIN_UNASSIGNED,
     // Portrait digitizer -> native landscape: x=rawY, y=479-rawX.
-    {TouchController::Cst816s, 41, 42, 1, PIN_UNASSIGNED, 0x15,
-     0, 799, 0, 479, false, 0, true, false, PIN_UNASSIGNED, true, false, true, true},
+    {TouchController::Cst816s, 41, 42, 1, PIN_UNASSIGNED, 0x15, 0, 799, 0, 479, false, 0, true, false, PIN_UNASSIGNED,
+     true, false, true, true},
     NO_FRONTLIGHT,
-    {AudioOutput::MetalioModule, 6, 43, 7, PIN_UNASSIGNED, PIN_UNASSIGNED, true,
-     PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, 0, PIN_UNASSIGNED},
-    NO_LEDS, NO_FLIP,
+    {AudioOutput::MetalioModule, 6, 43, 7, PIN_UNASSIGNED, PIN_UNASSIGNED, true, PIN_UNASSIGNED, PIN_UNASSIGNED,
+     PIN_UNASSIGNED, 0, PIN_UNASSIGNED},
+    NO_LEDS,
+    NO_FLIP,
     // GPIO46 is input-only DAT3, unused in 1-bit mode; requires board pull-up.
     {38, 40, 39, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, 1},
     {41, 42, 400000, 0x55, 0},
     {MicInput::MetalioModule, 6, 17, PIN_UNASSIGNED, true},
-    {41, 42, 400000, 0x51, 0, 0x19, 0, RtcType::Pcf8563, ImuType::Sc7a20h}, 1.25f,
-    {}, 0, {}, false, NO_I2C_FRONTLIGHT, {44, true, 20000}};
+    {41, 42, 400000, 0x51, 0, 0x19, 0, RtcType::Pcf8563, ImuType::Sc7a20h},
+    1.25f,
+    {},
+    0,
+    {},
+    false,
+    NO_I2C_FRONTLIGHT,
+    {44, true, 20000}};
 
 // --- Xteink X4 Pro — ESP32-S3, 800x480 EPD + GT911 touch + warm/cold frontlight ---
 // Recovered from the OEM flash dump (x4pro_flash_dump.bin); full evidence and confidence
@@ -1833,9 +1880,9 @@ constexpr BoardProfile XTEINK_X4_CLASSIC = {
     // GPIO1 is the board's master peripheral/panel rail. GPIO10 is display RESET,
     // not a power latch, and is initialized by EpdBus.
     {1, PIN_UNASSIGNED},
-    0,  // displayControllerVariant: filled by the boot probe
+    0,             // displayControllerVariant: filled by the boot probe
     {9, 7, 3, 7},  // bezel insets: carried from X4 Pro (same glass), pending measurement
-    true};  // batteryChargeStatusActiveHigh: GPIO21 STAT driven HIGH while charging
+    true};         // batteryChargeStatusActiveHigh: GPIO21 STAT driven HIGH while charging
 
 constexpr BoardProfile ONEPAGE = {
     Board::OnePage,
@@ -1852,25 +1899,25 @@ constexpr BoardProfile ONEPAGE = {
     // Input: 4-key front ADC ladder on GPIO4 + 3 side GPIO keys (UP=6, DOWN=9, POWER=2)
     // {back, confirm, left, right, up, down, power, powerActiveHigh, adcLadderPin}
     {PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, 6, 9, 2, false, 4},
-    5,               // batteryAdc: GPIO5 (ADC1_CH3)
-    11,              // batteryChargeStatus: GPIO11 (LM66200 ST open-drain, low=USB present)
-    2.0f,            // batteryDividerMultiplier
-    11,              // usbDetect: GPIO11 (LM66200 ST)
-    NO_TOUCH,        // touch: no touch
-    NO_FRONTLIGHT,   // frontlight: none
-    NO_AUDIO,        // audio: none
-    NO_LEDS,         // leds: none
-    NO_FLIP,         // orientation
-    NO_SDMMC,        // sdmmc: none (SPI)
-    NO_GAUGE,        // batteryGauge: none (ADC)
-    NO_MIC,          // mic
-    NO_SENSORS,      // sensors
-    1.0f,            // uiScale: 1.0
+    5,              // batteryAdc: GPIO5 (ADC1_CH3)
+    11,             // batteryChargeStatus: GPIO11 (LM66200 ST open-drain, low=USB present)
+    2.0f,           // batteryDividerMultiplier
+    11,             // usbDetect: GPIO11 (LM66200 ST)
+    NO_TOUCH,       // touch: no touch
+    NO_FRONTLIGHT,  // frontlight: none
+    NO_AUDIO,       // audio: none
+    NO_LEDS,        // leds: none
+    NO_FLIP,        // orientation
+    NO_SDMMC,       // sdmmc: none (SPI)
+    NO_GAUGE,       // batteryGauge: none (ADC)
+    NO_MIC,         // mic
+    NO_SENSORS,     // sensors
+    1.0f,           // uiScale: 1.0
     // Power: latch0, latch1, chargeEnable (GPIO10, active-high)
     {PIN_UNASSIGNED, PIN_UNASSIGNED, 10, true},
-    0,               // displayControllerVariant
-    {0, 0, 0, 0},    // viewableInsets: full 800x480 panel frame
-    false};          // batteryChargeStatusActiveHigh: false (low = USB present)
+    0,             // displayControllerVariant
+    {0, 0, 0, 0},  // viewableInsets: full 800x480 panel frame
+    false};        // batteryChargeStatusActiveHigh: false (low = USB present)
 
 static_assert(ONEPAGE.displayWidth / 8 * ONEPAGE.displayHeight == 48000,
               "OnePage framebuffer must be 48,000 bytes (800/8 x 480)");
@@ -1884,28 +1931,33 @@ constexpr uint32_t cmax(uint32_t a, uint32_t b) { return a > b ? a : b; }
 constexpr uint32_t panelBytes(const BoardProfile& p) {
   return static_cast<uint32_t>(p.displayWidth / 8) * p.displayHeight;
 }
-constexpr uint32_t MAX_FRAMEBUFFER_BYTES = cmax(
-    cmax(cmax(FREEINK_DEVICE_X4 ? panelBytes(XTEINK_X4) : 0u, FREEINK_DEVICE_X3 ? panelBytes(XTEINK_X3) : 0u),
-         cmax(FREEINK_DEVICE_M5 ? panelBytes(M5STACK_PAPER_COLOR) : 0u,
-              FREEINK_DEVICE_MURPHY ? panelBytes(MURPHY_M3) : 0u)),
-    cmax(cmax(cmax(FREEINK_DEVICE_DELINK ? panelBytes(DE_LINK) : 0u,
-                   FREEINK_DEVICE_LILYGO ? panelBytes(LILYGO_T5S3) : 0u),
-              cmax(FREEINK_DEVICE_M5PAPER ? panelBytes(M5PAPER_V11) : 0u,
-                   cmax(FREEINK_DEVICE_X4PRO ? panelBytes(XTEINK_X4_PRO) : 0u,
-                        FREEINK_DEVICE_X4CLASSIC ? panelBytes(XTEINK_X4_CLASSIC) : 0u))),
-         cmax(cmax(FREEINK_DEVICE_STICKY ? panelBytes(STICKY) : 0u,
-                   FREEINK_DEVICE_PAPERMONO ? panelBytes(PAPER_MONO) : 0u),
-              cmax(cmax(FREEINK_DEVICE_PAPERS3 ? panelBytes(M5PAPER_S3) : 0u,
-                        FREEINK_DEVICE_MURPHY_M4 ? panelBytes(MURPHY_M4) : 0u),
-                   cmax(cmax(FREEINK_DEVICE_EEGO_A4 ? panelBytes(EEGO_A4) : 0u,
-                             FREEINK_DEVICE_ONEPAGE ? panelBytes(ONEPAGE) : 0u),
-                        cmax(FREEINK_DEVICE_WS397 ? panelBytes(WS_EPAPER_397) : 0u,
-                             FREEINK_DEVICE_METALIO_EINK4 ? panelBytes(METALIO_EINK4) : 0u))))));
+constexpr uint32_t OTHER_FRAMEBUFFER_BYTES =
+    cmax(cmax(cmax(FREEINK_DEVICE_X4 ? panelBytes(XTEINK_X4) : 0u, FREEINK_DEVICE_X3 ? panelBytes(XTEINK_X3) : 0u),
+              cmax(FREEINK_DEVICE_M5 ? panelBytes(M5STACK_PAPER_COLOR) : 0u,
+                   FREEINK_DEVICE_MURPHY ? panelBytes(MURPHY_M3) : 0u)),
+         cmax(cmax(cmax(FREEINK_DEVICE_DELINK ? panelBytes(DE_LINK) : 0u,
+                        FREEINK_DEVICE_LILYGO ? panelBytes(LILYGO_T5S3) : 0u),
+                   cmax(FREEINK_DEVICE_M5PAPER ? panelBytes(M5PAPER_V11) : 0u,
+                        cmax(FREEINK_DEVICE_X4PRO ? panelBytes(XTEINK_X4_PRO) : 0u,
+                             FREEINK_DEVICE_X4CLASSIC ? panelBytes(XTEINK_X4_CLASSIC) : 0u))),
+              cmax(cmax(FREEINK_DEVICE_STICKY ? panelBytes(STICKY) : 0u,
+                        FREEINK_DEVICE_PAPERMONO ? panelBytes(PAPER_MONO) : 0u),
+                   cmax(cmax(FREEINK_DEVICE_PAPERS3 ? panelBytes(M5PAPER_S3) : 0u,
+                             FREEINK_DEVICE_MURPHY_M4 ? panelBytes(MURPHY_M4) : 0u),
+                        cmax(cmax(FREEINK_DEVICE_EEGO_A4 ? panelBytes(EEGO_A4) : 0u,
+                                  FREEINK_DEVICE_ONEPAGE ? panelBytes(ONEPAGE) : 0u),
+                             cmax(FREEINK_DEVICE_WS397 ? panelBytes(WS_EPAPER_397) : 0u,
+                                  FREEINK_DEVICE_METALIO_EINK4 ? panelBytes(METALIO_EINK4) : 0u))))));
+
+constexpr uint32_t MAX_FRAMEBUFFER_BYTES =
+    cmax(OTHER_FRAMEBUFFER_BYTES, FREEINK_DEVICE_READPICO ? panelBytes(READ_PICO) : 0u);
 
 // Compile-time default device — the profile ACTIVE starts as. With a single
 // device in the build this is the only device; with several same-MCU devices it
 // is the boot default until the consumer calls selectDevice().
-#if FREEINK_DEVICE_METALIO_EINK4
+#if FREEINK_DEVICE_READPICO
+constexpr BoardProfile DEFAULT_DEVICE = READ_PICO;
+#elif FREEINK_DEVICE_METALIO_EINK4
 constexpr BoardProfile DEFAULT_DEVICE = METALIO_EINK4;
 #elif FREEINK_DEVICE_WS397
 constexpr BoardProfile DEFAULT_DEVICE = WS_EPAPER_397;
@@ -1954,6 +2006,11 @@ inline void holdPowerRails();  // defined below; used by selectDevice()
 // leaves ACTIVE unchanged) if `which` was not included via -DFREEINK_DEVICE_*.
 inline bool selectDevice(Board which) {
   switch (which) {
+#if FREEINK_DEVICE_READPICO
+    case Board::ReadPico:
+      ACTIVE = READ_PICO;
+      break;
+#endif
 #if FREEINK_DEVICE_X4
     case Board::XteinkX4:
       ACTIVE = XTEINK_X4;
@@ -2064,6 +2121,7 @@ inline bool isX4Classic() { return ACTIVE.board == Board::XteinkX4Classic; }
 inline bool isPaperMono() { return ACTIVE.board == Board::PaperMono; }
 inline bool isEegoA4() { return ACTIVE.board == Board::EegoA4; }
 inline bool isMetalioEInk4() { return ACTIVE.board == Board::MetalioEInk4; }
+inline bool isReadPico() { return ACTIVE.board == Board::ReadPico; }
 inline bool isOnePage() { return ACTIVE.board == Board::OnePage; }
 inline bool isWsEpaper397() { return ACTIVE.board == Board::WsEpaper397; }
 inline bool hasTouch() { return ACTIVE.touch.controller != TouchController::None; }

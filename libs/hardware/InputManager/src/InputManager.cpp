@@ -3,6 +3,9 @@
 #include <algorithm>
 
 #include "MultiTouchGestureMath.h"
+#if FREEINK_DEVICE_READPICO
+#include <ReadPicoHardware.h>
+#endif
 
 #if FREEINK_CAP_TOUCH
 #include <Wire.h>
@@ -90,6 +93,12 @@ InputManager::InputManager()
       twoButtonLongPressActive(false) {}
 
 void InputManager::begin() {
+#if FREEINK_DEVICE_READPICO
+  if (BoardConfig::isReadPico()) {
+    freeink::readpico::ensureBooted();
+    setButtonHook(freeink::readpico::buttons);
+  }
+#endif
 #if FREEINK_DEVICE_METALIO_EINK4
   if (BoardConfig::isMetalioEInk4()) freeink::metalio::ensureBooted();
 #endif
@@ -167,10 +176,14 @@ uint8_t InputManager::getState() {
   if (BoardConfig::ACTIVE.inputStyle == BoardConfig::InputStyle::OnePageAdcLadder) {
     if (BoardConfig::ACTIVE.input.adcLadderPin >= 0) {
       const int mv = analogReadMilliVolts(BoardConfig::ACTIVE.input.adcLadderPin);
-      if (mv >= 2400 && mv <= 2800)      state |= (1 << BTN_BACK);    // ~2592 mV
-      else if (mv >= 1780 && mv <= 2140) state |= (1 << BTN_LEFT);    // ~1956 mV
-      else if (mv >= 1140 && mv <= 1500) state |= (1 << BTN_RIGHT);   // ~1316 mV
-      else if (mv >= 0 && mv <= 250)     state |= (1 << BTN_CONFIRM); // ~0 mV (ENTER)
+      if (mv >= 2400 && mv <= 2800)
+        state |= (1 << BTN_BACK);  // ~2592 mV
+      else if (mv >= 1780 && mv <= 2140)
+        state |= (1 << BTN_LEFT);  // ~1956 mV
+      else if (mv >= 1140 && mv <= 1500)
+        state |= (1 << BTN_RIGHT);  // ~1316 mV
+      else if (mv >= 0 && mv <= 250)
+        state |= (1 << BTN_CONFIRM);  // ~0 mV (ENTER)
     }
     if (BoardConfig::ACTIVE.input.up >= 0 && digitalRead(BoardConfig::ACTIVE.input.up) == LOW) {
       state |= (1 << BTN_UP);
@@ -366,7 +379,7 @@ void InputManager::applyStateChange(const uint8_t state, const unsigned long cur
   pressedEvents = state & ~currentState;
   releasedEvents = currentState & ~state;
 
-  if (pressedEvents > 0 && currentState == 0) {
+  if (pressedEvents > 0 && (currentState == 0 || BoardConfig::isReadPico())) {
     buttonPressStart = currentTime;
   }
 
@@ -553,6 +566,22 @@ void InputManager::update() {
 
   const uint8_t state = getState();
 
+#if FREEINK_DEVICE_READPICO
+  if (BoardConfig::isReadPico()) {
+    // Commit CST836U cover contacts immediately; debounce only the PMU power key.
+    constexpr uint8_t powerMask = 1 << BTN_POWER;
+    if ((state ^ lastState) & powerMask) lastDebounceTime = currentTime;
+    lastState = state;
+    uint8_t nextState = (state & ~powerMask) | (currentState & powerMask);
+    if ((currentTime - lastDebounceTime) > DEBOUNCE_DELAY) nextState = state;
+    if (nextState != currentState) {
+      applyStateChange(nextState, currentTime);
+      lastState = state;  // Preserve the raw PMU state while its debounce is pending.
+    }
+    return;
+  }
+#endif
+
   // Debounce
   if (state != lastState) {
     lastDebounceTime = currentTime;
@@ -569,6 +598,9 @@ void InputManager::update() {
 bool InputManager::isPressed(const uint8_t buttonIndex) const { return currentState & (1 << buttonIndex); }
 
 bool InputManager::isPowerButtonPhysicallyPressed() const {
+#if FREEINK_DEVICE_READPICO
+  if (BoardConfig::isReadPico()) return (freeink::readpico::buttons() & (1 << BTN_POWER)) != 0;
+#endif
   const int8_t pin = BoardConfig::ACTIVE.input.power;
   if (pin < 0) return false;
   const int activeLevel = BoardConfig::ACTIVE.input.powerActiveHigh ? HIGH : LOW;
@@ -611,6 +643,13 @@ bool InputManager::s_sharedConfirmPowerShortPressEmitsPower = false;
 
 bool InputManager::isPowerButtonPressed() const { return isPressed(BTN_POWER); }
 
+bool InputManager::shutdownRequested() const {
+#if FREEINK_DEVICE_READPICO
+  if (BoardConfig::isReadPico()) return freeink::readpico::shutdownRequested();
+#endif
+  return false;
+}
+
 // ============================================================================
 // Capacitive touch
 //
@@ -635,7 +674,8 @@ InputManager::TouchPoint InputManager::getTouchPoint() const { return touchPoint
 
 bool InputManager::supportsMultiTouch() const {
 #if FREEINK_CAP_TOUCH
-  return touchDataEnabled && BoardConfig::ACTIVE.touch.controller == BoardConfig::TouchController::Gt911;
+  return touchDataEnabled && (BoardConfig::ACTIVE.touch.controller == BoardConfig::TouchController::Gt911 ||
+                              BoardConfig::ACTIVE.touch.controller == BoardConfig::TouchController::Cst836u);
 #else
   return false;
 #endif
@@ -1228,6 +1268,12 @@ bool InputManager::wasHomeKeyLongPressed() const { return touchHomeKeyLongEvent;
 void InputManager::beginTouch() {
 #if FREEINK_CAP_TOUCH
   const auto& t = BoardConfig::ACTIVE.touch;
+#if FREEINK_DEVICE_READPICO
+  if (t.controller == BoardConfig::TouchController::Cst836u) {
+    touchDataEnabled = freeink::readpico::touchReady();
+    return;
+  }
+#endif
   if (t.controller == BoardConfig::TouchController::None) {
     return;
   }
@@ -1280,7 +1326,9 @@ uint8_t InputManager::serviceTouch() {
     resetMultiTouchGesture();
   }
 
-  if (t.controller == BoardConfig::TouchController::Cst816s) {
+  if (t.controller == BoardConfig::TouchController::Cst836u) {
+    pollCst836u(now);
+  } else if (t.controller == BoardConfig::TouchController::Cst816s) {
     pollCst816s(now);
   } else if (t.controller == BoardConfig::TouchController::Gt911) {
     pollGt911(now);
@@ -1304,7 +1352,8 @@ uint8_t InputManager::serviceTouch() {
     touchLongPressEvent = true;
   }
 
-  if (t.controller == BoardConfig::TouchController::Cst816s) return cstVirtualButtons;
+  if (t.controller == BoardConfig::TouchController::Cst816s || t.controller == BoardConfig::TouchController::Cst836u)
+    return cstVirtualButtons;
   return (t.synthesizeConfirm && now < touchIrqPulseUntil) ? (1 << BTN_CONFIRM) : 0;
 #else
   return 0;
@@ -1506,7 +1555,7 @@ void InputManager::beginFt5x06() {
 namespace {
 volatile bool cstInterrupt = false;
 void IRAM_ATTR cstTouchInterrupt() { cstInterrupt = true; }
-}
+}  // namespace
 
 void InputManager::beginCst816s() {
   const auto& t = BoardConfig::ACTIVE.touch;
@@ -1523,6 +1572,92 @@ void InputManager::beginCst816s() {
     attachInterrupt(digitalPinToInterrupt(t.irq), cstTouchInterrupt, FALLING);
   }
   touchDataEnabled = true;
+}
+
+void InputManager::pollCst836u(const unsigned long now) {
+#if FREEINK_DEVICE_READPICO
+  if (now < touchReadAt) return;
+  touchReadAt = now + TOUCH_SAMPLE_DELAY_MS;
+  freeink::readpico::TouchFrame frame;
+  const auto release = [&]() {
+    touchSnapshot = {};
+    updateMultiTouchGesture(touchSnapshot, now);
+    if (touchPressed) {
+      touchReleasedEvent = true;
+      lastTouchHeldDurationMs = now - touchDownPoint.timestamp;
+    }
+    touchPressed = false;
+    touchPoint.valid = false;
+    if (touchHomeKeyDown) {
+      if (!touchHomeKeyLongFired) touchHomeKeyTapEvent = true;
+      touchHomeKeyDown = false;
+      touchHomeKeyLongFired = false;
+    }
+    cstVirtualButtons = 0;
+  };
+  if (!freeink::readpico::readTouch(frame)) {
+    if (now - cstLastSample > 100) {
+      // A failed sample cannot complete a tap or gesture.
+      suppressTouchContact();
+      cancelMultiTouchGesture();
+      touchHomeKeyLongFired = true;
+      release();
+    }
+    return;
+  }
+  cstLastSample = now;
+  if (!frame.count) {
+    release();
+    return;
+  }
+  uint16_t x = 0, y = 0;
+  const auto region = freeink::readpico::mapTouch(frame.contacts[0].x, frame.contacts[0].y, x, y);
+  if (frame.count == 1 &&
+      (region == freeink::readpico::TouchRegion::Back || region == freeink::readpico::TouchRegion::Next ||
+       region == freeink::readpico::TouchRegion::Previous)) {
+    if (touchPressed) {
+      suppressTouchContact();
+      cancelMultiTouchGesture();
+      release();
+    }
+    cstVirtualButtons = 1 << (region == freeink::readpico::TouchRegion::Back   ? BTN_BACK
+                              : region == freeink::readpico::TouchRegion::Next ? BTN_DOWN
+                                                                               : BTN_UP);
+    return;
+  }
+  TouchSnapshot snapshot = {};
+  snapshot.reportedCount = frame.count;
+  snapshot.idsStable = false;
+  for (uint8_t i = 0; i < frame.count; ++i) {
+    if (freeink::readpico::mapTouch(frame.contacts[i].x, frame.contacts[i].y, x, y) !=
+        freeink::readpico::TouchRegion::Screen) {
+      suppressTouchContact();
+      cancelMultiTouchGesture();
+      touchHomeKeyLongFired = true;
+      release();
+      return;
+    }
+    snapshot.points[snapshot.count++] = {frame.contacts[i].id, {true, x, y, now}};
+  }
+  if (touchHomeKeyDown || cstVirtualButtons) {
+    touchHomeKeyLongFired = true;
+    release();
+  }
+  touchSnapshot = snapshot;
+  if (!touchPressed) {
+    touchDownPoint = snapshot.points[0].point;
+    touchMovedBeyondTapSlop = touchMovedBeyondTapReleaseSlop = false;
+    touchPressedEvent = true;
+  }
+  updateMultiTouchGesture(snapshot, now);
+  touchPoint = touchUpPoint = snapshot.points[0].point;
+  const int dx = absInt(int(touchPoint.x) - int(touchDownPoint.x));
+  const int dy = absInt(int(touchPoint.y) - int(touchDownPoint.y));
+  if (dx > TOUCH_TAP_SLOP_PX || dy > TOUCH_TAP_SLOP_PX || frame.count > 1) touchMovedBeyondTapSlop = true;
+  if (dx > TOUCH_TAP_RELEASE_SLOP_PX || dy > TOUCH_TAP_RELEASE_SLOP_PX || frame.count > 1)
+    touchMovedBeyondTapReleaseSlop = true;
+  touchPressed = true;
+#endif
 }
 
 void InputManager::pollCst816s(const unsigned long now) {
@@ -1549,7 +1684,10 @@ void InputManager::pollCst816s(const unsigned long now) {
   };
   // Re-reading CST816S can return the last sample after its event ends.
   // A stale successful read must not keep a contact pressed forever either.
-  if (active && !fresh && now - cstLastSample >= 100) { release(); return; }
+  if (active && !fresh && now - cstLastSample >= 100) {
+    release();
+    return;
+  }
   uint8_t data[5] = {};
   if (!ft5x06ReadReg(0x02, data, sizeof(data))) {
     // The device goes silent again after release; don't latch a key/contact.
@@ -1566,8 +1704,14 @@ void InputManager::pollCst816s(const unsigned long now) {
   if (BoardConfig::isMetalioEInk4() && rawY >= 800) {
     // Vendor cover key centers: HOME=(80,900), NEXT=(240,900), PREV=(400,900).
     // Ignore invalid off-panel samples rather than clamping them into screen taps.
-    if (rawY < 860 || rawY > 940 || rawX > 479) { release(); return; }
-    if (touchPressed) { suppressTouchContact(); release(); }
+    if (rawY < 860 || rawY > 940 || rawX > 479) {
+      release();
+      return;
+    }
+    if (touchPressed) {
+      suppressTouchContact();
+      release();
+    }
     if (rawX < 160) {
       cstVirtualButtons = 0;
       if (!touchHomeKeyDown) {
@@ -1588,9 +1732,12 @@ void InputManager::pollCst816s(const unsigned long now) {
   if (touchHomeKeyDown || cstVirtualButtons) release();
   const uint16_t x = t.swapXY ? rawY : rawX;
   const uint16_t y = t.swapXY ? rawX : rawY;
-  if (x < t.rawMinX || x > t.rawMaxX || y < t.rawMinY || y > t.rawMaxY) { release(); return; }
+  if (x < t.rawMinX || x > t.rawMaxX || y < t.rawMinY || y > t.rawMaxY) {
+    release();
+    return;
+  }
   touchPoint = {true, mapTouchAxis(x, t.rawMinX, t.rawMaxX, t.rawMaxX - t.rawMinX),
-                     mapTouchAxis(y, t.rawMinY, t.rawMaxY, t.rawMaxY - t.rawMinY), now};
+                mapTouchAxis(y, t.rawMinY, t.rawMaxY, t.rawMaxY - t.rawMinY), now};
   if (t.flipX) touchPoint.x = t.rawMaxX - t.rawMinX - touchPoint.x;
   if (t.flipY) touchPoint.y = t.rawMaxY - t.rawMinY - touchPoint.y;
   if (!touchPressed) {
@@ -1730,7 +1877,8 @@ bool InputManager::gslUploadFirmware() {
       ok = gslWrite(0xF0, &page, 1) && ok;
     } else {
       const uint8_t val[4] = {static_cast<uint8_t>(e.value & 0xFF), static_cast<uint8_t>((e.value >> 8) & 0xFF),
-                              static_cast<uint8_t>((e.value >> 16) & 0xFF), static_cast<uint8_t>((e.value >> 24) & 0xFF)};
+                              static_cast<uint8_t>((e.value >> 16) & 0xFF),
+                              static_cast<uint8_t>((e.value >> 24) & 0xFF)};
       ok = gslWrite(e.reg, val, 4) && ok;
     }
   }

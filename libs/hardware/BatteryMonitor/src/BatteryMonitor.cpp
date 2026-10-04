@@ -4,6 +4,9 @@
 #include <BoardConfig.h>
 #include <M5Pm1.h>
 #include <esp_idf_version.h>
+#if FREEINK_DEVICE_READPICO
+#include <ReadPicoHardware.h>
+#endif
 #if ESP_IDF_VERSION_MAJOR < 5
 #include <esp_adc_cal.h>
 #endif
@@ -184,8 +187,7 @@ bool bq27220LoadStep(const uint8_t addr, const uint16_t mah, const unsigned long
     return next(s.step + 1, s.step == 5 ? 500 : 1500);
   }
   if (s.step == 6 || s.step == 8) {
-    const bool reached =
-        readReg16(addr, BQ27220_OPERATION_STATUS, status) && ((status & 0x0400) != 0) == (s.step == 6);
+    const bool reached = readReg16(addr, BQ27220_OPERATION_STATUS, status) && ((status & 0x0400) != 0) == (s.step == 6);
     if (!reached && now - s.since < 5000) return next(s.step, 500);
     // Learned FCC first, Design Capacity half a second later: the X3's gauge can miss
     // a block select sent right after a block write. If anything fails, Design
@@ -477,9 +479,7 @@ namespace {
 // pull-up; an active-high STAT (X4 Pro GPIO21) is push-pull driven with no
 // pull — stock reads it bare, and a pull-up would fake "charging" if the
 // driver ever tri-states.
-int chargeActiveLevel() {
-  return BoardConfig::ACTIVE.batteryChargeStatusActiveHigh ? HIGH : LOW;
-}
+int chargeActiveLevel() { return BoardConfig::ACTIVE.batteryChargeStatusActiveHigh ? HIGH : LOW; }
 }  // namespace
 
 BatteryMonitor::BatteryMonitor(int8_t adcPin, float dividerMultiplier, int8_t chargeStatusPin)
@@ -489,11 +489,12 @@ BatteryMonitor::BatteryMonitor(int8_t adcPin, float dividerMultiplier, int8_t ch
   }
 }
 
-bool BatteryMonitor::hasAdcBackend() const {
-  return _adcPin >= 0;
-}
+bool BatteryMonitor::hasAdcBackend() const { return _adcPin >= 0; }
 
 bool BatteryMonitor::hasGaugeBackend() const {
+#if FREEINK_DEVICE_READPICO
+  if (BoardConfig::isReadPico()) return true;
+#endif
 #if FREEINK_BATTERY_I2C_GAUGE
   return BoardConfig::ACTIVE.batteryGauge.gaugeAddr != 0;
 #else
@@ -506,6 +507,9 @@ bool BatteryMonitor::hasM5Pm1Backend() const {
 }
 
 uint16_t BatteryMonitor::readPercentage() const {
+#if FREEINK_DEVICE_READPICO
+  if (BoardConfig::isReadPico()) return readStatus().percentage;
+#endif
 #if FREEINK_BATTERY_I2C_GAUGE
   // Runtime, per active profile: gauge boards (X3, LilyGo, X4 Pro) read SoC over I2C;
   // ADC boards (X4) in the same binary fall through to the divider path below.
@@ -525,6 +529,14 @@ uint16_t BatteryMonitor::readPercentage() const {
 }
 
 bool BatteryMonitor::readPercentageChecked(uint16_t& out) const {
+#if FREEINK_DEVICE_READPICO
+  if (BoardConfig::isReadPico()) {
+    const auto status = readStatus();
+    if (!status.percentageKnown) return false;
+    out = status.percentage;
+    return true;
+  }
+#endif
 #if FREEINK_BATTERY_I2C_GAUGE
   if (BoardConfig::ACTIVE.batteryGauge.gaugeAddr != 0) {
     uint16_t soc = 0;
@@ -556,6 +568,20 @@ bool BatteryMonitor::loadDesignCapacity() {
 
 BatteryMonitor::Status BatteryMonitor::readStatus() const {
   Status status;
+#if FREEINK_DEVICE_READPICO
+  if (BoardConfig::isReadPico()) {
+    freeink::readpico::BatteryStatus sample;
+    status.supported = true;
+    if (freeink::readpico::readBattery(sample)) {
+      status.percentageKnown = status.millivoltsKnown = sample.valid;
+      status.percentage = sample.percentage;
+      status.millivolts = sample.millivolts;
+      status.chargingKnown = sample.chargingKnown;
+      status.charging = sample.charging;
+    }
+    return status;
+  }
+#endif
 
 #if FREEINK_BATTERY_I2C_GAUGE
   if (BoardConfig::ACTIVE.batteryGauge.gaugeAddr != 0) {
@@ -608,6 +634,9 @@ BatteryMonitor::Status BatteryMonitor::readStatus() const {
 }
 
 uint16_t BatteryMonitor::readMillivolts() const {
+#if FREEINK_DEVICE_READPICO
+  if (BoardConfig::isReadPico()) return readStatus().millivolts;
+#endif
 #if FREEINK_BATTERY_I2C_GAUGE
   if (BoardConfig::ACTIVE.batteryGauge.gaugeAddr != 0) {
     uint16_t gaugeMv = 0;
@@ -648,11 +677,12 @@ uint16_t BatteryMonitor::readMillivolts() const {
   return static_cast<uint16_t>(mv * _dividerMultiplier);
 }
 
-double BatteryMonitor::readVolts() const {
-  return static_cast<double>(readMillivolts()) / 1000.0;
-}
+double BatteryMonitor::readVolts() const { return static_cast<double>(readMillivolts()) / 1000.0; }
 
 bool BatteryMonitor::isCharging() const {
+#if FREEINK_DEVICE_READPICO
+  if (BoardConfig::isReadPico()) return readStatus().charging;
+#endif
 #if FREEINK_BATTERY_I2C_GAUGE
   // Gauge boards: prefer a charger IC's status (BQ25896), else fall back to the
   // gauge's own Current() sign, so a board with a gauge but no charger IC (e.g.

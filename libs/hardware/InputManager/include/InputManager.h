@@ -31,6 +31,7 @@ class InputManager {
   // Current electrical level of the configured power-button GPIO, before
   // logical click/hold classification. False when the board has no such GPIO.
   bool isPowerButtonPhysicallyPressed() const;
+  bool shutdownRequested() const;
 
   // Press edge since the previous update().
   bool wasPressed(uint8_t buttonIndex) const;
@@ -132,7 +133,7 @@ class InputManager {
   // BTN_UP/BTN_DOWN. Bit positions match the button indices.
   uint8_t capacitivePageButtonMask() const {
 #if FREEINK_CAP_TOUCH
-    return cstVirtualButtons;
+    return cstVirtualButtons & ((1 << BTN_UP) | (1 << BTN_DOWN));
 #else
     return 0;
 #endif
@@ -330,6 +331,7 @@ class InputManager {
   void pollGt911(unsigned long now);    // GT911 polled read
   void beginCst816s();
   void pollCst816s(unsigned long now);
+  void pollCst836u(unsigned long now);
   uint8_t cstVirtualButtons = 0;
   unsigned long cstLastSample = 0;
   void beginFt5x06();

@@ -1,0 +1,2 @@
+# Preserve the pinned upstream bytes used by vendor-manifest.json.
+vendor/** -text

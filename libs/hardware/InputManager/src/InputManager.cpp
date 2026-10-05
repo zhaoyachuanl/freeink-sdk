@@ -176,14 +176,10 @@ uint8_t InputManager::getState() {
   if (BoardConfig::ACTIVE.inputStyle == BoardConfig::InputStyle::OnePageAdcLadder) {
     if (BoardConfig::ACTIVE.input.adcLadderPin >= 0) {
       const int mv = analogReadMilliVolts(BoardConfig::ACTIVE.input.adcLadderPin);
-      if (mv >= 2400 && mv <= 2800)
-        state |= (1 << BTN_BACK);  // ~2592 mV
-      else if (mv >= 1780 && mv <= 2140)
-        state |= (1 << BTN_LEFT);  // ~1956 mV
-      else if (mv >= 1140 && mv <= 1500)
-        state |= (1 << BTN_RIGHT);  // ~1316 mV
-      else if (mv >= 0 && mv <= 250)
-        state |= (1 << BTN_CONFIRM);  // ~0 mV (ENTER)
+      if (mv >= 2400 && mv <= 2800)      state |= (1 << BTN_BACK);    // ~2592 mV
+      else if (mv >= 1780 && mv <= 2140) state |= (1 << BTN_LEFT);    // ~1956 mV
+      else if (mv >= 1140 && mv <= 1500) state |= (1 << BTN_RIGHT);   // ~1316 mV
+      else if (mv >= 0 && mv <= 250)     state |= (1 << BTN_CONFIRM); // ~0 mV (ENTER)
     }
     if (BoardConfig::ACTIVE.input.up >= 0 && digitalRead(BoardConfig::ACTIVE.input.up) == LOW) {
       state |= (1 << BTN_UP);
@@ -1555,7 +1551,7 @@ void InputManager::beginFt5x06() {
 namespace {
 volatile bool cstInterrupt = false;
 void IRAM_ATTR cstTouchInterrupt() { cstInterrupt = true; }
-}  // namespace
+}
 
 void InputManager::beginCst816s() {
   const auto& t = BoardConfig::ACTIVE.touch;
@@ -1684,10 +1680,7 @@ void InputManager::pollCst816s(const unsigned long now) {
   };
   // Re-reading CST816S can return the last sample after its event ends.
   // A stale successful read must not keep a contact pressed forever either.
-  if (active && !fresh && now - cstLastSample >= 100) {
-    release();
-    return;
-  }
+  if (active && !fresh && now - cstLastSample >= 100) { release(); return; }
   uint8_t data[5] = {};
   if (!ft5x06ReadReg(0x02, data, sizeof(data))) {
     // The device goes silent again after release; don't latch a key/contact.
@@ -1704,14 +1697,8 @@ void InputManager::pollCst816s(const unsigned long now) {
   if (BoardConfig::isMetalioEInk4() && rawY >= 800) {
     // Vendor cover key centers: HOME=(80,900), NEXT=(240,900), PREV=(400,900).
     // Ignore invalid off-panel samples rather than clamping them into screen taps.
-    if (rawY < 860 || rawY > 940 || rawX > 479) {
-      release();
-      return;
-    }
-    if (touchPressed) {
-      suppressTouchContact();
-      release();
-    }
+    if (rawY < 860 || rawY > 940 || rawX > 479) { release(); return; }
+    if (touchPressed) { suppressTouchContact(); release(); }
     if (rawX < 160) {
       cstVirtualButtons = 0;
       if (!touchHomeKeyDown) {
@@ -1732,12 +1719,9 @@ void InputManager::pollCst816s(const unsigned long now) {
   if (touchHomeKeyDown || cstVirtualButtons) release();
   const uint16_t x = t.swapXY ? rawY : rawX;
   const uint16_t y = t.swapXY ? rawX : rawY;
-  if (x < t.rawMinX || x > t.rawMaxX || y < t.rawMinY || y > t.rawMaxY) {
-    release();
-    return;
-  }
+  if (x < t.rawMinX || x > t.rawMaxX || y < t.rawMinY || y > t.rawMaxY) { release(); return; }
   touchPoint = {true, mapTouchAxis(x, t.rawMinX, t.rawMaxX, t.rawMaxX - t.rawMinX),
-                mapTouchAxis(y, t.rawMinY, t.rawMaxY, t.rawMaxY - t.rawMinY), now};
+                     mapTouchAxis(y, t.rawMinY, t.rawMaxY, t.rawMaxY - t.rawMinY), now};
   if (t.flipX) touchPoint.x = t.rawMaxX - t.rawMinX - touchPoint.x;
   if (t.flipY) touchPoint.y = t.rawMaxY - t.rawMinY - touchPoint.y;
   if (!touchPressed) {
@@ -1877,8 +1861,7 @@ bool InputManager::gslUploadFirmware() {
       ok = gslWrite(0xF0, &page, 1) && ok;
     } else {
       const uint8_t val[4] = {static_cast<uint8_t>(e.value & 0xFF), static_cast<uint8_t>((e.value >> 8) & 0xFF),
-                              static_cast<uint8_t>((e.value >> 16) & 0xFF),
-                              static_cast<uint8_t>((e.value >> 24) & 0xFF)};
+                              static_cast<uint8_t>((e.value >> 16) & 0xFF), static_cast<uint8_t>((e.value >> 24) & 0xFF)};
       ok = gslWrite(e.reg, val, 4) && ok;
     }
   }

@@ -19,7 +19,11 @@ def main():
     if args.check:
         manifest = json.loads((ROOT / "vendor-manifest.json").read_text(encoding="utf-8"))
         expected = manifest["files"]
-        present = {path.relative_to(ROOT / "vendor").as_posix() for path in (ROOT / "vendor").rglob("*") if path.is_file()}
+        present = {
+            path.relative_to(ROOT / "vendor").as_posix()
+            for path in (ROOT / "vendor").rglob("*")
+            if path.is_file()
+        }
         if present != set(expected):
             parser.error("vendor file list differs from manifest")
         for relative, digest in expected.items():
@@ -42,14 +46,18 @@ def main():
             rel = path.relative_to(directory)
             if not path.is_file() or any(part in ("examples", "docs") for part in rel.parts):
                 continue
-            if path.suffix not in (".c", ".h", ".S", ".cmake", ".yml") and path.name not in ("LICENSE", "README.md", "CMakeLists.txt"):
+            if path.suffix not in (".c", ".h", ".S", ".cmake", ".yml") and path.name not in (
+                "LICENSE", "README.md", "CMakeLists.txt",
+            ):
                 continue
             files.append(path)
     board = source / "components/read_pico"
-    files.extend(board / name for name in (
-        "LICENSE", "read_pico_board.c", "read_pico_epd_timing.c",
-        "include/read_pico_board.h", "include/read_pico_epd_timing.h",
-    ))
+    files.extend(
+        board / name for name in (
+            "LICENSE", "read_pico_board.c", "read_pico_epd_timing.c",
+            "include/read_pico_board.h", "include/read_pico_epd_timing.h",
+        )
+    )
     manifest = {"repository": "https://github.com/MindReset/read_pico_firmware", "commit": PIN, "files": {}}
     for path in files:
         rel = path.relative_to(source / "components")

@@ -187,7 +187,8 @@ bool bq27220LoadStep(const uint8_t addr, const uint16_t mah, const unsigned long
     return next(s.step + 1, s.step == 5 ? 500 : 1500);
   }
   if (s.step == 6 || s.step == 8) {
-    const bool reached = readReg16(addr, BQ27220_OPERATION_STATUS, status) && ((status & 0x0400) != 0) == (s.step == 6);
+    const bool reached =
+        readReg16(addr, BQ27220_OPERATION_STATUS, status) && ((status & 0x0400) != 0) == (s.step == 6);
     if (!reached && now - s.since < 5000) return next(s.step, 500);
     // Learned FCC first, Design Capacity half a second later: the X3's gauge can miss
     // a block select sent right after a block write. If anything fails, Design
@@ -479,7 +480,9 @@ namespace {
 // pull-up; an active-high STAT (X4 Pro GPIO21) is push-pull driven with no
 // pull — stock reads it bare, and a pull-up would fake "charging" if the
 // driver ever tri-states.
-int chargeActiveLevel() { return BoardConfig::ACTIVE.batteryChargeStatusActiveHigh ? HIGH : LOW; }
+int chargeActiveLevel() {
+  return BoardConfig::ACTIVE.batteryChargeStatusActiveHigh ? HIGH : LOW;
+}
 }  // namespace
 
 BatteryMonitor::BatteryMonitor(int8_t adcPin, float dividerMultiplier, int8_t chargeStatusPin)
@@ -489,7 +492,9 @@ BatteryMonitor::BatteryMonitor(int8_t adcPin, float dividerMultiplier, int8_t ch
   }
 }
 
-bool BatteryMonitor::hasAdcBackend() const { return _adcPin >= 0; }
+bool BatteryMonitor::hasAdcBackend() const {
+  return _adcPin >= 0;
+}
 
 bool BatteryMonitor::hasGaugeBackend() const {
 #if FREEINK_DEVICE_READPICO
@@ -677,7 +682,9 @@ uint16_t BatteryMonitor::readMillivolts() const {
   return static_cast<uint16_t>(mv * _dividerMultiplier);
 }
 
-double BatteryMonitor::readVolts() const { return static_cast<double>(readMillivolts()) / 1000.0; }
+double BatteryMonitor::readVolts() const {
+  return static_cast<double>(readMillivolts()) / 1000.0;
+}
 
 bool BatteryMonitor::isCharging() const {
 #if FREEINK_DEVICE_READPICO

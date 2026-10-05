@@ -1,5 +1,2 @@
 # Auto detect text files and perform LF normalization
 * text=auto
-
-# Preserve the pinned upstream bytes used by vendor-manifest.json.
-libs/hardware/ReadPicoHardware/vendor/** -text

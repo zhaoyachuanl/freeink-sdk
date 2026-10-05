@@ -1,8 +1,6 @@
 .pio/
 .vscode/
 .cache/
-__pycache__/
-*.pyc
 *.o
 *.a
 .DS_Store

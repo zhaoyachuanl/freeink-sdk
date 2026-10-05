@@ -168,8 +168,12 @@ void FreeInkDisplay::selectDriver() {
       }
 #endif
 #if FREEINK_DRIVER_READPICO
-      _driver = &readPicoDriver();
-#elif FREEINK_DRIVER_UC8279C
+      if (BoardConfig::ACTIVE.displayController == BoardConfig::DisplayController::ReadPico) {
+        _driver = &readPicoDriver();
+        break;
+      }
+#endif
+#if FREEINK_DRIVER_UC8279C
       _driver = &uc8279cA4Driver();
 #elif FREEINK_DRIVER_SSD1677
       _driver = &ssd1677Driver();

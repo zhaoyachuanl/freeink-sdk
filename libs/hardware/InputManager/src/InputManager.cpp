@@ -375,7 +375,7 @@ void InputManager::applyStateChange(const uint8_t state, const unsigned long cur
   pressedEvents = state & ~currentState;
   releasedEvents = currentState & ~state;
 
-  if (pressedEvents > 0 && (currentState == 0 || BoardConfig::isReadPico())) {
+  if (pressedEvents > 0 && currentState == 0) {
     buttonPressStart = currentTime;
   }
 
@@ -571,6 +571,7 @@ void InputManager::update() {
     uint8_t nextState = (state & ~powerMask) | (currentState & powerMask);
     if ((currentTime - lastDebounceTime) > DEBOUNCE_DELAY) nextState = state;
     if (nextState != currentState) {
+      if (nextState & ~currentState) buttonPressStart = currentTime;
       applyStateChange(nextState, currentTime);
       lastState = state;  // Preserve the raw PMU state while its debounce is pending.
     }
@@ -1616,9 +1617,19 @@ void InputManager::pollCst836u(const unsigned long now) {
       cancelMultiTouchGesture();
       release();
     }
-    cstVirtualButtons = 1 << (region == freeink::readpico::TouchRegion::Back   ? BTN_BACK
-                              : region == freeink::readpico::TouchRegion::Next ? BTN_DOWN
-                                                                               : BTN_UP);
+    switch (region) {
+      case freeink::readpico::TouchRegion::Back:
+        cstVirtualButtons = 1 << BTN_BACK;
+        break;
+      case freeink::readpico::TouchRegion::Next:
+        cstVirtualButtons = 1 << BTN_DOWN;
+        break;
+      case freeink::readpico::TouchRegion::Previous:
+        cstVirtualButtons = 1 << BTN_UP;
+        break;
+      default:
+        break;
+    }
     return;
   }
   TouchSnapshot snapshot = {};

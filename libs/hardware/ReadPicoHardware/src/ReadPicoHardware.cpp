@@ -49,7 +49,8 @@ bool keyWasObserved = false;
 unsigned long lastPoll = 0;
 unsigned long lastGoodPoll = 0;
 bool pollHealthy = false;
-unsigned long keyPulseUntil = 0;
+uint32_t keyPulseStarted = 0;
+bool keyPulsePending = false;
 cst836u_handle_t touch = nullptr;
 EpdiyHighlevelState displayState = {};
 bool firstRefresh = true;
@@ -61,8 +62,7 @@ bool grayPending = false;
 DisplayPowerPolicy displayPower;
 
 bool criticalEvent(uint8_t type) {
-  return type == PMU_EVT_BATTERY_CRITICAL || type == PMU_EVT_BATTERY_SOC_LOW || type == PMU_EVT_SHUTDOWN_REQUESTED ||
-         type == PMU_EVT_KEY_FORCE_OFF;
+  return type == PMU_EVT_BATTERY_CRITICAL || type == PMU_EVT_SHUTDOWN_REQUESTED || type == PMU_EVT_KEY_FORCE_OFF;
 }
 
 // This is the only event FIFO consumer. Battery/UI readers use its cached status.
@@ -82,7 +82,10 @@ bool pollLocked(bool force = false) {
     const uint16_t id = status->event.event_id;
     if (criticalEvent(type)) sleepRequested = true;
     if (type == PMU_EVT_KEY_SHORT) {
-      if (!keyWasObserved) keyPulseUntil = now + 80;
+      if (!keyWasObserved) {
+        keyPulseStarted = now;
+        keyPulsePending = true;
+      }
       keyWasObserved = false;
     }
     if (!id || read_pico_pmu_event_ack(id) != ESP_OK) break;
@@ -152,16 +155,6 @@ bool readTouch(TouchFrame& frame) {
     if (!sample.points[i].active) continue;
     frame.contacts[frame.count++] = {sample.points[i].id, sample.points[i].x, sample.points[i].y};
   }
-  static uint8_t lastCount = 0;
-  static TouchRegion lastRegion = TouchRegion::Invalid;
-  uint16_t x = 0, y = 0;
-  const auto region = frame.count ? mapTouch(frame.contacts[0].x, frame.contacts[0].y, x, y) : TouchRegion::Invalid;
-  if (frame.count != lastCount || region != lastRegion) {
-    ESP_LOGI(TAG, "Touch count=%u region=%u raw=%u,%u", frame.count, unsigned(region), frame.contacts[0].x,
-             frame.contacts[0].y);
-    lastCount = frame.count;
-    lastRegion = region;
-  }
   return true;
 }
 
@@ -174,7 +167,8 @@ uint8_t buttons() {
   }
   pollLocked();
   if (!lastGoodPoll || millis() - lastGoodPoll > 100) return 0;
-  return ((read_pico_pmu_get()->key_state & 1) || millis() < keyPulseUntil) ? (1 << 6) : 0;
+  if (keyPulsePending && uint32_t(millis() - keyPulseStarted) >= 80) keyPulsePending = false;
+  return ((read_pico_pmu_get()->key_state & 1) || keyPulsePending) ? (1 << 6) : 0;
 }
 
 bool shutdownRequested() {
@@ -213,7 +207,14 @@ bool beginDisplay() {
 
 static void refreshLocked(bool full, bool fast) {
   displayPower.cancel();
-  ESP_LOGI(TAG, "Refresh %s", full || firstRefresh ? "GC16 full" : fast ? "DU partial" : "GL16 full pixels");
+  const bool cleanup = full || firstRefresh;
+  auto mode = MODE_GL16;
+  if (cleanup) {
+    mode = MODE_GC16;
+  } else if (fast) {
+    mode = MODE_DU;
+  }
+  ESP_LOGI(TAG, "Refresh mode=%u", unsigned(mode));
   epd_poweron();
   if (!read_pico_rails_on()) {
     ESP_LOGE(TAG, "EPD rails failed to start");
@@ -223,9 +224,8 @@ static void refreshLocked(bool full, bool fast) {
   const int temperature = int(epd_ambient_temperature());
   if (firstRefresh) epd_clear();
   // E0470 GL16's white push must also drive unchanged white pixels.
-  const auto result = full || firstRefresh ? epd_hl_update_screen_full(&displayState, MODE_GC16, temperature)
-                      : fast               ? epd_hl_update_screen(&displayState, MODE_DU, temperature)
-                                           : epd_hl_update_screen_full(&displayState, MODE_GL16, temperature);
+  const auto result = fast && !cleanup ? epd_hl_update_screen(&displayState, mode, temperature)
+                                       : epd_hl_update_screen_full(&displayState, mode, temperature);
   if (result != EPD_DRAW_SUCCESS) {
     ESP_LOGE(TAG, "Display update error 0x%x", unsigned(result));
   } else {

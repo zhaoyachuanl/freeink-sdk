@@ -17,7 +17,9 @@ enum class TouchRegion : uint8_t { Invalid, Screen, Back, Next, Previous };
 inline TouchRegion mapTouch(uint16_t rawX, uint16_t rawY, uint16_t& panelX, uint16_t& panelY) {
   if (rawY >= 1300) {
     if (rawX >= 480) return TouchRegion::Invalid;
-    return rawX < 160 ? TouchRegion::Previous : rawX < 320 ? TouchRegion::Back : TouchRegion::Next;
+    if (rawX < 160) return TouchRegion::Previous;
+    if (rawX < 320) return TouchRegion::Back;
+    return TouchRegion::Next;
   }
   if (rawX >= HEIGHT || rawY >= WIDTH) return TouchRegion::Invalid;
   panelX = rawY;
@@ -51,9 +53,12 @@ inline void applyGrayPlane(const uint8_t* source, uint8_t* target, size_t bytes,
       uint8_t& pair = target[i * 4 + pixel / 2];
       const uint8_t previous = (pair >> shift) & 15;
       const bool bit = (source[i] & (0x80 >> pixel)) != 0;
-      const uint8_t value = absolute ? (msb ? uint8_t((previous + (bit ? 2 : 0)) * 5) : uint8_t(bit))
-                            : bit    ? uint8_t(msb && previous != 5 ? 10 : 5)
-                                     : previous;
+      uint8_t value = previous;
+      if (absolute) {
+        value = msb ? uint8_t((previous + (bit ? 2 : 0)) * 5) : uint8_t(bit);
+      } else if (bit) {
+        value = msb && previous != 5 ? 10 : 5;
+      }
       pair = (pair & ~(15 << shift)) | (value << shift);
     }
   }
